@@ -133,12 +133,59 @@ def extract_references(pdf_path: Path, config: Config) -> list[Reference]:
             logger.debug(f"Filtered low-confidence ref [{i+1}]: {raw_text[:80]}...")
             continue
 
+        # Filter out false positives: venue/page fragments parsed as references
+        if _is_false_positive(ref):
+            filtered_count += 1
+            logger.debug(f"Filtered false positive [{i+1}]: {raw_text[:80]}...")
+            continue
+
         references.append(ref)
 
     if filtered_count:
-        logger.info(f"Filtered {filtered_count} low-confidence entries (likely not references)")
+        logger.info(f"Filtered {filtered_count} low-confidence/false-positive entries")
 
     return references
+
+
+def _is_false_positive(ref) -> bool:
+    """Detect references that are actually venue fragments or page info."""
+    import re
+
+    title = (ref.title or "").strip()
+    raw = (ref.raw_text or "").strip()
+
+    if not title:
+        return False
+
+    title_lower = title.lower()
+
+    # Title starts with venue keywords — this is a fragment, not a reference
+    venue_starts = (
+        "proceedings of", "in proceedings", "conference on", "conference of",
+        "association for", "transactions of", "journal of", "advances in",
+        "workshop on", "findings of", "annual meeting",
+    )
+    if any(title_lower.startswith(v) for v in venue_starts):
+        return True
+
+    # Title is mostly page/volume info
+    if re.match(r"^[,\s]*pages?\s+\d", title_lower):
+        return True
+    if re.match(r"^[,\s]*volume\s+\d", title_lower):
+        return True
+    if re.match(r"^[),\s]+pages?\s", title_lower):
+        return True
+
+    # Title is just a location (city, country)
+    if re.match(r"^[A-Z][a-z]+,\s+[A-Z][a-z]+\.?\s*$", title):
+        return True
+
+    # Title contains only author names and no actual title content
+    # (happens when author list is split from the rest)
+    if not ref.year and len(title) < 60 and title.endswith(","):
+        return True
+
+    return False
 
 
 def _ref_list_quality(refs: list[str]) -> float:

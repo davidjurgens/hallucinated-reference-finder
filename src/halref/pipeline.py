@@ -306,6 +306,15 @@ async def _verify_single(
 
     clients = _create_api_clients(config)
 
+    # Repair truncated references via API (verify against PDF text)
+    from halref.extract.repair import repair_references
+    from halref.extract.text_extractors.pdfminer_extractor import PdfminerExtractor
+    try:
+        full_ref_text = PdfminerExtractor().extract_text(pdf_path)
+    except Exception:
+        full_ref_text = ""
+    references = await repair_references(references, clients, full_ref_text)
+
     from halref.agent.strategies import VerificationAgent
     from halref.matching.scorer import score_reference
 

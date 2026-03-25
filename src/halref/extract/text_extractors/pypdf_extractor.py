@@ -20,6 +20,13 @@ _STOP_PATTERNS = re.compile(
     r"|Acknowledgment|Acknowledgement"
     r"|Ethics\s+Statement|Limitations"
     r"|Broader\s+Impact|Impact\s+Statement"
+    r"|Additional\s+(?:Experiments|Details|Results|Analysis|Examples)"
+    r"|Supplementary\s+Material"
+    r"|Reproducibility"
+    r"|(?:Figure|Table)\s+\d+\s*:"
+    r"|Prompt\s+Template|Evaluation\s+(?:Form|Rubric|Criteria)"
+    r"|Implementation\s+Details|Hyperparameter"
+    r"|Dataset\s+(?:Details|Statistics|Description)"
     r")\b",
     re.IGNORECASE,
 )
@@ -73,8 +80,8 @@ class PypdfExtractor(TextExtractor):
             start = max(0, total - 3)
             return [reader.pages[i].extract_text() or "" for i in range(start, total)]
 
-        end_page = min(ref_page + 5, total)
-        return [reader.pages[i].extract_text() or "" for i in range(ref_page, end_page)]
+        # Extract all remaining pages; _find_references_section() stops at appendix
+        return [reader.pages[i].extract_text() or "" for i in range(ref_page, total)]
 
     @staticmethod
     def _strip_line_numbers(text: str) -> str:

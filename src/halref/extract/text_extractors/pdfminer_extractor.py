@@ -24,10 +24,20 @@ _STOP_PATTERNS = re.compile(
     r"|\d+\s+(?:Appendix|Supplementary|Additional)"
     # "A.1 Details" or "B.2 Examples"
     r"|[A-H]\.\d+\s+[A-Z]"
-    # Other post-references sections
+    # Post-references sections
     r"|Acknowledgment|Acknowledgement"
     r"|Ethics\s+Statement|Limitations"
     r"|Broader\s+Impact|Impact\s+Statement"
+    # Additional appendix indicators
+    r"|Additional\s+(?:Experiments|Details|Results|Analysis|Examples)"
+    r"|Supplementary\s+Material"
+    r"|Reproducibility"
+    # Appendix content markers (figures/tables as standalone headings)
+    r"|(?:Figure|Table)\s+\d+\s*:"
+    # Common appendix headings
+    r"|Prompt\s+Template|Evaluation\s+(?:Form|Rubric|Criteria)"
+    r"|Implementation\s+Details|Hyperparameter"
+    r"|Dataset\s+(?:Details|Statistics|Description)"
     r")\b",
     re.IGNORECASE,
 )
@@ -102,12 +112,13 @@ class PdfminerExtractor(TextExtractor):
             start = max(0, total_pages - 3)
             return extract_text(str(pdf_path), page_numbers=list(range(start, total_pages)))
 
-        # Extract from the References page through the next few pages
-        # (references typically span 1-4 pages)
-        # We extract generously and let _find_references_section() trim
-        end_page = min(ref_page + 5, total_pages)
-        pages = list(range(ref_page, end_page))
-        logger.debug(f"References heading on page {ref_page + 1}, extracting pages {ref_page + 1}-{end_page}")
+        # Extract from the References page through ALL remaining pages.
+        # _find_references_section() will stop at Appendix/Limitations/etc.
+        pages = list(range(ref_page, total_pages))
+        logger.debug(
+            f"References heading on page {ref_page + 1}, "
+            f"extracting pages {ref_page + 1}-{total_pages}"
+        )
         return extract_text(str(pdf_path), page_numbers=pages)
 
     def _find_references_section(self, text: str) -> str:

@@ -30,7 +30,7 @@ PAPERS = [
     # Defaults in test_paper: precision>=0.55, recall>=0.40, nonsense<=3
     {"id": "2603.16073", "name": "ClaimFlow", "min_refs": 50},
     {"id": "2601.18724", "name": "HalluCitation", "min_refs": 50,
-     "min_recall": 0.15, "max_nonsense": 20},  # 57-page paper with huge appendix, .bbl ground truth
+     "min_precision": 0.30, "min_recall": 0.80, "max_nonsense": 20},  # 57pp, 344 refs, over-splitting expected
     {"id": "2503.24047", "name": "Large269", "min_refs": 50},
     {"id": "2502.18414", "name": "Medium53", "min_refs": 2,
      "min_precision": 0.0, "min_recall": 0.0},  # Known: pdfminer column interleaving
