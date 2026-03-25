@@ -148,7 +148,7 @@ def extract_references(pdf_path: Path, config: Config) -> list[Reference]:
 
 
 def _is_false_positive(ref) -> bool:
-    """Detect references that are actually venue fragments or page info."""
+    """Detect references that are actually venue fragments, page info, or section headings."""
     import re
 
     title = (ref.title or "").strip()
@@ -164,16 +164,24 @@ def _is_false_positive(ref) -> bool:
         "proceedings of", "in proceedings", "conference on", "conference of",
         "association for", "transactions of", "journal of", "advances in",
         "workshop on", "findings of", "annual meeting",
+        "first ", "second ", "third ", "fourth ", "fifth ",  # "First BabyLM Workshop..."
     )
     if any(title_lower.startswith(v) for v in venue_starts):
         return True
 
+    # Title CONTAINS venue keywords AND is short (fragment, not a real title)
+    venue_keywords = ("association for computational linguistics", "workshop", "proceedings")
+    if len(title) < 80 and any(kw in title_lower for kw in venue_keywords):
+        # But not if it looks like a real paper title about these topics
+        if not re.search(r"\b(?:19|20)\d{2}\b", raw[:60]):  # No year in first part
+            return True
+
     # Title is mostly page/volume info
-    if re.match(r"^[,\s]*pages?\s+\d", title_lower):
+    if re.match(r"^[,)\s]*pages?\s+\d", title_lower):
         return True
-    if re.match(r"^[,\s]*volume\s+\d", title_lower):
+    if re.match(r"^[,)\s]*volume\s+\d", title_lower):
         return True
-    if re.match(r"^[),\s]+pages?\s", title_lower):
+    if re.match(r"^\d+[–\-]\d+[,\s]", title):  # "8192–8212, Suzhou, China"
         return True
 
     # Title is just a location (city, country)
@@ -181,8 +189,21 @@ def _is_false_positive(ref) -> bool:
         return True
 
     # Title contains only author names and no actual title content
-    # (happens when author list is split from the rest)
     if not ref.year and len(title) < 60 and title.endswith(","):
+        return True
+
+    # Section heading parsed as reference (e.g., "A.1 Claim Dynamics and Structural Roles")
+    if re.match(r"^[A-Z]\.\d+\s+", title):
+        return True
+    if re.match(r"^[A-Z]\s+[A-Z][a-z]+\s+[A-Z][a-z]+", title) and not ref.year:
+        return True
+
+    # Raw text is a journal issue reference (e.g., "Processing Systems, volume 31, pages 5598–5609")
+    if re.match(r"^[A-Z].*,\s*(?:volume|pages?|pp\.)\s+\d", raw) and not ref.year:
+        return True
+
+    # Very short with no year — likely a fragment
+    if len(raw) < 50 and not ref.year:
         return True
 
     return False
