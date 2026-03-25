@@ -32,13 +32,6 @@ def print_terminal_report(
     for report in batch.reports:
         console.print()
         apis = ", ".join(report.apis_used) if report.apis_used else "none"
-        console.print(Panel(
-            f"[bold]{report.input_file}[/bold]\n"
-            f"References: {report.total_references} | "
-            f"Flagged (>={threshold}): {report.flagged_count} | "
-            f"APIs: {apis}",
-            title="Verification Report",
-        ))
 
         ranked = report.ranked()
 
@@ -46,6 +39,18 @@ def print_terminal_report(
         # (these are also filtered from bib files by _is_valid_for_bib)
         displayable = [r for r in ranked if _is_displayable(r)]
         noise_count = len(ranked) - len(displayable)
+
+        # Recount flagged based on displayable entries only
+        valid_ref_count = len(displayable)
+        flagged_count = len([r for r in displayable if r.hallucination_score >= threshold])
+
+        console.print(Panel(
+            f"[bold]{report.input_file}[/bold]\n"
+            f"References: {valid_ref_count} | "
+            f"Flagged (>={threshold}): {flagged_count} | "
+            f"APIs: {apis}",
+            title="Verification Report",
+        ))
 
         # Separate into shown vs skipped by threshold
         shown = [r for r in displayable if show_ok or r.hallucination_score >= threshold]
