@@ -129,9 +129,25 @@ async def run_check(
         style="dim",
     )
 
-    # Step 3: Prioritize and search
-    prioritized = _prioritize_references(deduped)
+    # Step 3: Repair truncated references before verification
+    from halref.extract.repair import repair_references
+    all_refs = [d.canonical for d in deduped]
+    # Build combined reference text for verification
+    full_ref_texts = {}
+    from halref.extract.text_extractors.pdfminer_extractor import PdfminerExtractor
+    pdfminer = PdfminerExtractor()
+    for pdf_path in per_file_refs:
+        try:
+            full_ref_texts[pdf_path] = pdfminer.extract_text(pdf_path)
+        except Exception:
+            full_ref_texts[pdf_path] = ""
+    combined_ref_text = "\n".join(full_ref_texts.values())
+
     clients = _create_api_clients(config)
+    await repair_references(all_refs, clients, combined_ref_text)
+
+    # Step 4: Prioritize and search
+    prioritized = _prioritize_references(deduped)
 
     from halref.agent.strategies import VerificationAgent
     from halref.matching.scorer import score_reference
@@ -269,12 +285,24 @@ def _reassemble_reports(
         for ref in refs:
             key = (pdf_path, ref.source_index)
             if key in result_lookup:
-                # Use the deduplicated result but attach this file's reference
                 match_result = result_lookup[key].model_copy()
+                # Propagate repaired data from canonical ref to per-file ref:
+                # fill in any fields that were missing in the per-file ref
+                # but were filled by repair on the canonical ref
+                canonical = match_result.reference
+                if canonical.title and (not ref.title or len(ref.title) < len(canonical.title)):
+                    ref.title = canonical.title
+                if canonical.year and not ref.year:
+                    ref.year = canonical.year
+                if canonical.authors and not ref.authors:
+                    ref.authors = canonical.authors
+                if canonical.venue and not ref.venue:
+                    ref.venue = canonical.venue
+                if canonical.doi and not ref.doi:
+                    ref.doi = canonical.doi
                 match_result.reference = ref
                 results.append(match_result)
             else:
-                # No result (shouldn't happen, but handle gracefully)
                 from halref.matching.scorer import score_reference
                 results.append(score_reference(ref, [], config.matching.weights))
 
