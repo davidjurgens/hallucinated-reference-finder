@@ -1,0 +1,144 @@
+\documentclass[11pt]{article}
+\usepackage[review]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{lipsum}
+
+\title{A Multi-Pronged Approach to Detecting Hallucinated References in Academic Papers}
+
+\author{First Author \\
+  Test University \\
+  Department of Computer Science \\
+  \texttt{first@test.edu} \\\And
+  Second Author \\
+  Test University \\
+  Department of Computer Science \\
+  \texttt{second@test.edu} \\}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We present a comprehensive system for detecting hallucinated references in academic papers. Our approach combines multiple PDF extraction backends with a multi-API verification pipeline and agentic retry strategies. We evaluate on a dataset of papers containing both real and fabricated citations, achieving high precision and recall. The system produces a ranked list of references by hallucination likelihood, enabling efficient review of potentially problematic citations. Our tool is fully open source and processes all documents locally for privacy.
+\end{abstract}
+
+\section{Introduction}
+
+Natural language processing has seen remarkable advances in recent years, driven by the development of large pretrained language models \cite{devlin-etal-2019-bert,vaswani-etal-2017-attention,brown-etal-2020-language}. These models have demonstrated impressive capabilities across a wide range of tasks, from text generation to question answering and beyond.
+
+\lipsum[1-3]
+
+The problem of hallucinated references is particularly concerning in academic publishing. Language models can generate plausible-looking citations that combine real author names with fictitious titles \cite{chang-etal-2019-bert-hallucinated,zhang-etal-2023-adaptive}. These hallucinated references often pass cursory human review.
+
+\lipsum[4-5]
+
+\section{Background}
+
+\subsection{Reference Extraction from Scientific Documents}
+
+Extracting structured references from PDF documents has been studied extensively. Various tools exist for this purpose \cite{wolf-etal-2020-transformers,vaswani-etal-2019-attention-hallucinated}.
+
+\lipsum[6-8]
+
+\subsection{Citation Verification Methods}
+
+Prior work on citation verification has focused primarily on detecting broken URLs and missing DOIs \cite{lewis-etal-2020-bart,park-etal-2022-neural}.
+
+\lipsum[9-11]
+
+\subsection{Hallucination Detection in Language Model Outputs}
+
+Large language models are known to produce hallucinated content, including fabricated citations \cite{pennington-etal-2014-glove,devlin-etal-2020-recursive-hallucinated}. Studies have shown significant rates of fabricated references in LLM-generated text.
+
+\lipsum[12-14]
+
+\section{Methodology}
+
+\subsection{Multi-Pronged Reference Extraction}
+
+Our approach uses multiple extraction backends operating in parallel \cite{peters-etal-2018-deep,zhang-etal-2023-adaptive}.
+
+\lipsum[15-17]
+
+\subsection{Field Parsing Pipeline}
+
+Individual reference strings are parsed into structured fields using a cascade of parsers \cite{devlin-etal-2019-bert,vaswani-etal-2017-attention}.
+
+\lipsum[18-20]
+
+\subsection{Multi-API Verification}
+
+Extracted references are verified against multiple academic databases \cite{brown-etal-2020-language,liu2019roberta,park-etal-2022-neural}.
+
+\lipsum[21-23]
+
+\subsection{Hallucination Scoring}
+
+We compute a composite hallucination score based on weighted signals \cite{raffel-etal-2020-exploring,chang-etal-2019-bert-hallucinated}.
+
+\lipsum[24-26]
+
+\subsection{Agentic Retry Strategies}
+
+When initial API searches fail to find a match, our system employs a series of query reformulation strategies \cite{lewis-etal-2020-bart,park-etal-2022-neural}.
+
+\lipsum[42-44]
+
+\section{Experiments}
+
+We evaluated our system on a dataset of 100 papers containing a mix of real and hallucinated references \cite{wolf-etal-2020-transformers,devlin-etal-2020-recursive-hallucinated}.
+
+\lipsum[26-28]
+
+\subsection{Results}
+
+Our system achieved strong performance across all evaluation metrics \cite{mikolov-etal-2013-distributed,pennington-etal-2014-glove,vaswani-etal-2019-attention-hallucinated}.
+
+\lipsum[29-31]
+
+\subsection{Analysis}
+
+The agentic retry strategies significantly improved recall \cite{peters-etal-2018-deep,zhang-etal-2023-adaptive}.
+
+\lipsum[32-33]
+
+\subsection{Ablation Study}
+
+We conducted an ablation study to evaluate the contribution of each component \cite{chang-etal-2019-bert-hallucinated,devlin-etal-2020-recursive-hallucinated}.
+
+\lipsum[45-46]
+
+\section{Discussion}
+
+\lipsum[34-36]
+
+\subsection{Limitations}
+
+\lipsum[37-38]
+
+\subsection{Ethical Considerations}
+
+\lipsum[47-48]
+
+\section{Related Work}
+
+Several tools have been developed for reference verification \cite{devlin-etal-2019-bert,brown-etal-2020-language,park-etal-2022-neural}.
+
+\lipsum[39-40]
+
+\lipsum[49-50]
+
+\section{Conclusion}
+
+We presented a comprehensive system for detecting hallucinated references \cite{vaswani-etal-2017-attention,wolf-etal-2020-transformers,devlin-etal-2020-recursive-hallucinated}. Our system achieves high precision and recall.
+
+\lipsum[41]
+
+\bibliography{test_refs}
+\bibliographystyle{acl_natbib}
+
+\end{document}

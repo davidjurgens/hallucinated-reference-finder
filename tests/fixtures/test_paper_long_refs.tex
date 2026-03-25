@@ -1,0 +1,79 @@
+\documentclass[11pt]{article}
+\usepackage[review]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{lipsum}
+
+\title{A Survey of Large Language Models: Two Pages of References}
+
+\author{First Author \\
+  Test University \\
+  \texttt{first@test.edu} \\\And
+  Second Author \\
+  Test University \\
+  \texttt{second@test.edu} \\}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper surveys the development of large language models over the past decade. We cover foundational architectures, scaling laws, instruction tuning, and emergent capabilities. Our survey encompasses over twenty key papers in the field.
+\end{abstract}
+
+\section{Introduction}
+\lipsum[1-3]
+The transformer architecture \cite{vaswani-etal-2017-attention} revolutionized natural language processing \cite{devlin-etal-2019-bert,brown-etal-2020-language,liu2019roberta}.
+
+\lipsum[4-5]
+
+\section{Foundational Models}
+\lipsum[6-8]
+Pre-trained models like BERT \cite{devlin-etal-2019-bert}, RoBERTa \cite{liu2019roberta}, and GPT-2 \cite{radford-etal-2019-language} established the paradigm of pre-training followed by fine-tuning.
+
+\lipsum[9-11]
+
+\section{Scaling Language Models}
+\lipsum[12-14]
+The scaling of language models led to GPT-3 \cite{brown-etal-2020-language}, PaLM \cite{chowdhery-etal-2022-palm}, and LLaMA \cite{touvron-etal-2023-llama}. Other notable models include XLNet \cite{yang-etal-2019-xlnet}, ELECTRA \cite{clark-etal-2020-electra}, and DeBERTa \cite{he-etal-2021-deberta}.
+
+\lipsum[15-17]
+
+\section{Instruction Tuning and Alignment}
+\lipsum[18-20]
+InstructGPT \cite{ouyang-etal-2022-training} demonstrated that RLHF could align models with human preferences. Chain-of-thought prompting \cite{wei-etal-2022-chain} showed emergent reasoning capabilities.
+
+\lipsum[21-23]
+
+\section{Emergent Capabilities}
+\lipsum[24-26]
+GPT-4 showed sparks of general intelligence \cite{bubeck-etal-2023-sparks}. The T5 model \cite{raffel-etal-2020-exploring} unified many NLP tasks. The Transformers library \cite{wolf-etal-2020-transformers} made these models accessible.
+
+\lipsum[27-29]
+
+\section{Representation Learning}
+\lipsum[30-32]
+Word embeddings like Word2Vec \cite{mikolov-etal-2013-distributed} and GloVe \cite{pennington-etal-2014-glove} laid the foundation. ELMo \cite{peters-etal-2018-deep} introduced contextual embeddings.
+
+\lipsum[33-35]
+
+\section{Sequence-to-Sequence Models}
+\lipsum[36-38]
+BART \cite{lewis-etal-2020-bart} and OPT \cite{zhang-etal-2022-opt} advanced sequence-to-sequence pre-training.
+
+\lipsum[39-41]
+
+\section{Discussion}
+\lipsum[42-44]
+
+\section{Conclusion}
+\lipsum[45-46]
+This survey covered the key developments from attention mechanisms \cite{vaswani-etal-2017-attention} to modern LLMs \cite{touvron-etal-2023-llama,chowdhery-etal-2022-palm}.
+
+\bibliography{test_refs,extra_refs}
+\bibliographystyle{acl_natbib}
+
+\end{document}

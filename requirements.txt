@@ -1,0 +1,10 @@
+typer>=0.9
+pydantic>=2.0
+pydantic-settings>=2.0
+aiohttp>=3.9
+aiolimiter>=1.1
+rapidfuzz>=3.0
+pdfplumber>=0.11
+nameparser>=1.1
+bibtexparser>=1.4
+rich>=13.0

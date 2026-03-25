@@ -1,0 +1,77 @@
+\documentclass[11pt]{article}
+\usepackage[review]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{lipsum}
+
+\title{Detecting Hallucinated References: With Limitations Section on Page 9}
+
+\author{First Author \\
+  Test University \\
+  \texttt{first@test.edu} \\\And
+  Second Author \\
+  Test University \\
+  \texttt{second@test.edu} \\}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper tests the case where a Limitations section appears on page 9 before the references begin, ensuring the extraction correctly identifies the References heading even when other sections precede it on the same pages.
+\end{abstract}
+
+\section{Introduction}
+\lipsum[1-3]
+Large language models \cite{devlin-etal-2019-bert,vaswani-etal-2017-attention,brown-etal-2020-language} have transformed NLP.
+
+\lipsum[4-6]
+
+\section{Background}
+\lipsum[7-10]
+Pre-trained models \cite{liu2019roberta,raffel-etal-2020-exploring,wolf-etal-2020-transformers} are now standard.
+
+\lipsum[11-14]
+
+\section{Methodology}
+\lipsum[15-18]
+We build on prior work in sequence modeling \cite{lewis-etal-2020-bart,mikolov-etal-2013-distributed}.
+
+\lipsum[19-22]
+
+\section{Experiments}
+\lipsum[23-26]
+Our evaluation uses standard benchmarks \cite{pennington-etal-2014-glove,peters-etal-2018-deep}.
+
+\lipsum[27-30]
+
+\section{Results}
+\lipsum[31-34]
+
+\section{Discussion}
+\lipsum[35-38]
+
+\lipsum[39-42]
+
+\section{Related Work}
+\lipsum[43-46]
+
+% This Limitations section should appear on page 9, before references
+\section*{Limitations}
+
+Our approach has several limitations that should be noted. First, the extraction pipeline depends on the quality of the PDF text layer. Scanned documents without OCR will produce no extractable text. Second, our reference parsers are tuned for ACL format and may not handle other citation styles (APA, IEEE, Vancouver) without modification. Third, the API verification step requires network access, which may not be available in all environments.
+
+\lipsum[47-48]
+
+Additionally, the hallucination scoring weights were tuned on a limited dataset of NLP papers and may need adjustment for other domains such as biomedical or legal literature. The system currently does not handle multi-language references or references with non-Latin scripts.
+
+\lipsum[49-50]
+
+% References should start after Limitations
+\bibliography{test_refs}
+\bibliographystyle{acl_natbib}
+
+\end{document}

@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment
+.env
+.env~
+
+# OS
+.DS_Store
+
+# Output directories (generated at runtime)
+halref_output/
+/output/
+
+# Downloaded test data (large, reproducible via scripts)
+test_arxiv/
+test_acl_source/
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+tests/fixtures/*.pdf
+tests/fixtures/acl.sty
+tests/fixtures/acl_natbib.bst
+
+# Papers data (private)
+papers/
+
+# Editor
+*.swp
+*~

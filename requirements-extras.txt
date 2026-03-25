@@ -1,0 +1,4 @@
+docling>=2.0
+marker-pdf>=1.0
+openai>=1.0
+acl-anthology>=0.6

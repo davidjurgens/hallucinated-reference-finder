@@ -1,0 +1,46 @@
+[extraction]
+# Available text extractors: pdfplumber (always available), docling, marker
+text_extractors = ["pdfplumber"]
+# Available field parsers: regex, heuristic (always available), llm, api
+field_parsers = ["regex", "heuristic"]
+# Reference pages (1-indexed, e.g., "9-13"). Empty = auto-detect via "References" heading
+ref_pages = ""
+
+[apis.semantic_scholar]
+api_key = ""                # or set SEMANTIC_SCHOLAR_API_KEY env var
+enabled = true
+
+[apis.crossref]
+enabled = true
+mailto = ""                 # your email for polite pool (higher rate limits)
+
+[apis.dblp]
+enabled = true
+
+[apis.openalex]
+api_key = ""                # or set OPENALEX_API_KEY env var
+enabled = true
+
+[apis.acl_anthology]
+enabled = true
+
+[matching]
+title_threshold = 0.85
+author_threshold = 0.6
+# Weights for hallucination score components (must sum to 1.0)
+[matching.weights]
+title = 0.30
+authors = 0.25
+author_order = 0.15
+year = 0.15
+consensus = 0.15
+
+[agent]
+enable_retry = true
+max_retries = 2
+
+[llm]
+enabled = false
+base_url = "http://localhost:8000/v1"   # vLLM/Ollama endpoint
+model = ""
+api_key = ""
