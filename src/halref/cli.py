@@ -111,6 +111,14 @@ def check(
         f"({_fmt_elapsed(time.time() - t_verify)})"
     )
 
+    # Re-write .bib files after verification (repair may have fixed truncated refs)
+    for file_report in report.reports:
+        refs = [r.reference for r in file_report.results]
+        if refs:
+            pdf_name = Path(file_report.input_file).stem
+            bib_path = bib_dir / f"{pdf_name}.bib"
+            write_bib(refs, bib_path, quiet=True)
+
     # Step 4: Output report(s)
     from halref.output.bib_output import write_bib_report
     from halref.output.json_output import write_json_report

@@ -9,9 +9,13 @@ from halref.models import Reference
 
 
 def write_bib(references: list[Reference], output_path: Path, quiet: bool = False) -> None:
-    """Write references to a .bib file."""
+    """Write references to a .bib file, skipping invalid entries."""
     entries = []
+    skipped = 0
     for ref in references:
+        if not _is_valid_for_bib(ref):
+            skipped += 1
+            continue
         entry = reference_to_bibtex(ref)
         if entry:
             entries.append(entry)
@@ -23,9 +27,48 @@ def write_bib(references: list[Reference], output_path: Path, quiet: bool = Fals
 
     if not quiet:
         from rich.console import Console
-        Console(stderr=True).print(
-            f"Wrote {len(entries)} references to {output_path.resolve()}"
-        )
+        msg = f"Wrote {len(entries)} references to {output_path.resolve()}"
+        if skipped:
+            msg += f" ({skipped} invalid entries skipped)"
+        Console(stderr=True).print(msg)
+
+
+def _is_valid_for_bib(ref: Reference) -> bool:
+    """Check if a reference has enough valid data to include in a .bib file.
+
+    Rejects entries that would produce nonsensical BibTeX:
+    - No title at all
+    - Single-word titles (truncated extraction)
+    - Title that is clearly an author list (no verbs/nouns, just names and commas)
+    - No year AND no authors (not enough to identify the work)
+    """
+    title = (ref.title or "").strip()
+
+    # Must have a title
+    if not title:
+        return False
+
+    # Title must be more than one word (single word = truncated)
+    if len(title.split()) <= 1:
+        return False
+
+    # Title should be at least ~15 chars to be meaningful
+    if len(title) < 15:
+        return False
+
+    # Reject if title looks like an author list (names + commas, no real title content)
+    # Heuristic: mostly commas and capitalized words, no period or colon
+    if not ref.year and "." not in title and ":" not in title:
+        comma_count = title.count(",")
+        word_count = len(title.split())
+        if comma_count >= 2 and comma_count >= word_count * 0.3:
+            return False
+
+    # Must have EITHER a year OR authors to be minimally useful
+    if not ref.year and not ref.authors:
+        return False
+
+    return True
 
 
 def reference_to_bibtex(ref: Reference) -> str:
