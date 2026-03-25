@@ -42,9 +42,14 @@ def print_terminal_report(
 
         ranked = report.ranked()
 
-        # Separate into shown vs skipped
-        shown = [r for r in ranked if show_ok or r.hallucination_score >= threshold]
-        skipped = len(ranked) - len(shown)
+        # Filter out garbage entries that shouldn't appear in reports at all
+        # (these are also filtered from bib files by _is_valid_for_bib)
+        displayable = [r for r in ranked if _is_displayable(r)]
+        noise_count = len(ranked) - len(displayable)
+
+        # Separate into shown vs skipped by threshold
+        shown = [r for r in displayable if show_ok or r.hallucination_score >= threshold]
+        skipped = len(displayable) - len(shown)
 
         if not shown:
             console.print("  [green]All references verified OK[/green]")
@@ -81,11 +86,13 @@ def print_terminal_report(
 
         console.print(table)
 
+        footer_parts = []
         if skipped:
-            console.print(
-                f"  ({skipped} references with score < {threshold} not shown — use --show-ok to see all)",
-                style="dim",
-            )
+            footer_parts.append(f"{skipped} OK refs not shown (use --show-ok)")
+        if noise_count:
+            footer_parts.append(f"{noise_count} incomplete extractions excluded")
+        if footer_parts:
+            console.print(f"  ({'; '.join(footer_parts)})", style="dim")
 
     # Batch summary
     if len(batch.reports) > 1:
@@ -266,3 +273,34 @@ def _clean_name(name: str) -> str:
     """Clean an author name string."""
     name = re.sub(r"^\[\d+\]\s*", "", name)
     return name.strip().strip(",").strip()
+
+
+def _is_displayable(result: MatchResult) -> bool:
+    """Check if a result should appear in the report at all.
+
+    Excludes entries that are extraction noise — no useful data to show.
+    These are the same entries filtered from bib files.
+    """
+    ref = result.reference
+    title = (ref.title or "").strip()
+
+    # Must have a title with at least 2 words
+    if not title or len(title.split()) <= 1:
+        return False
+
+    # Title must be long enough to be meaningful
+    if len(title) < 15:
+        return False
+
+    # Reject title that is clearly an author list (no year, commas, no punctuation)
+    if not ref.year and "." not in title and ":" not in title:
+        comma_count = title.count(",")
+        word_count = len(title.split())
+        if comma_count >= 2 and comma_count >= word_count * 0.3:
+            return False
+
+    # Must have at least a year OR authors
+    if not ref.year and not ref.authors:
+        return False
+
+    return True

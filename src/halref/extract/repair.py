@@ -57,17 +57,31 @@ async def repair_references(
 
 def _needs_repair(ref: Reference) -> bool:
     """Check if a reference needs repair."""
+    import re
+
+    title = (ref.title or "").rstrip()
+
     # Truncated title (short or ends mid-word)
-    if ref.title and len(ref.title) < 30:
+    if title and len(title) < 30:
         return True
-    if ref.title and ref.title.rstrip().endswith((" and", " the", " of", " in", " a")):
+    if title and title.endswith((" and", " the", " of", " in", " a")):
         return True
-    # Missing year with authors and title
-    if not ref.year and ref.title and ref.authors:
+
+    # Title looks like an author list, not a real title
+    # (commas between capitalized words, no period/colon, ends with a name)
+    if title and not ref.year and "." not in title and ":" not in title:
+        comma_count = title.count(",")
+        if comma_count >= 2 and re.search(r",\s+and\s+\w+$", title):
+            return True
+
+    # Missing year with title
+    if not ref.year and title:
         return True
+
     # No authors but has title and year
-    if not ref.authors and ref.title and ref.year:
+    if not ref.authors and title and ref.year:
         return True
+
     return False
 
 
