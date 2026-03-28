@@ -110,7 +110,16 @@ class PdfminerExtractor(TextExtractor):
             logger.warning(f"No References heading found in {pdf_path.name}")
             # Last resort: return last 3 pages
             start = max(0, total_pages - 3)
-            return extract_text(str(pdf_path), page_numbers=list(range(start, total_pages)))
+            fallback = extract_text(str(pdf_path), page_numbers=list(range(start, total_pages)))
+            # Sanity check: if the fallback text has no whitespace it's garbled
+            # (pathological PDF with no layout info — pdfminer can't parse it)
+            if fallback and fallback.count(" ") + fallback.count("\n") < len(fallback) * 0.05:
+                logger.warning(
+                    f"{pdf_path.name}: extracted text has no whitespace — "
+                    f"PDF may be unreadable by pdfminer (try pypdf or pdfplumber)"
+                )
+                return ""
+            return fallback
 
         # Extract from the References page through ALL remaining pages.
         # _find_references_section() will stop at Appendix/Limitations/etc.
