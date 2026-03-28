@@ -117,7 +117,7 @@ Create a `config.toml` or set environment variables:
 ```bash
 # API keys (recommended for faster rate limits)
 export SEMANTIC_SCHOLAR_API_KEY="your-key"   # https://www.semanticscholar.org/product/api#api-key
-export OPENALEX_API_KEY="your-key"           # https://openalex.org/users/me
+export OPENALEX_API_KEY="your-key"           # Required since Feb 2026 — https://openalex.org/users/me
 export CROSSREF_MAILTO="you@example.com"     # No signup, just your email
 ```
 
@@ -141,7 +141,7 @@ enabled = true
 enabled = true
 
 [apis.openalex]
-api_key = ""
+api_key = ""  # Required since Feb 2026 — get a free key at https://openalex.org/users/me
 enabled = true
 
 [matching]
