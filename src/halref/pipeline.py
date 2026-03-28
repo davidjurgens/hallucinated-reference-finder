@@ -438,7 +438,7 @@ def _create_api_clients(config: Config) -> list:
         if not api_cfg.api_key:
             missing_keys.append(
                 "[bold]OpenAlex[/bold]: No API key set (required since Feb 2026).\n"
-                "  Get a free key at: https://openalex.org/users/me\n"
+                "  Get a free key at: https://openalex.org/settings/api-key\n"
                 "  Set via: OPENALEX_API_KEY env var or apis.openalex.api_key in config"
             )
 
