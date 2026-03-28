@@ -108,15 +108,62 @@ def extract_references(pdf_path: Path, config: Config) -> list[Reference]:
             logger.warning(f"{extractor.name} failed: {e}")
 
     if not all_ref_strings:
+        # Primary extractors all failed (e.g. pdfminer returned garbled text).
+        # Try pypdf as an automatic fallback before giving up — it handles PDFs
+        # that pdfminer can't parse (missing layout info, no whitespace output).
+        if not any(e.name == "pypdf" for e in extractors):
+            logger.info("Primary extractors produced no results — trying pypdf fallback")
+            try:
+                from halref.extract.text_extractors.pypdf_extractor import PypdfExtractor
+                fallback = PypdfExtractor()
+                text = fallback.extract_text(pdf_path, page_range=page_range)
+                if text.strip():
+                    refs = split_references(text)
+                    if refs:
+                        logger.info(f"pypdf fallback: found {len(refs)} references")
+                        all_ref_strings["pypdf"] = refs
+            except Exception as e:
+                logger.warning(f"pypdf fallback failed: {e}")
+
+    if not all_ref_strings:
         logger.error("No text extractors produced results")
         return []
 
     # Pick the best extractor result by quality:
     # Prefer the one with the most references that have years (indicates real refs)
+    for extractor_name, refs in all_ref_strings.items():
+        quality = _ref_list_quality(refs)
+        logger.debug(f"  {extractor_name}: {len(refs)} refs, quality_score={quality:.1f}")
     best_extractor = max(
         all_ref_strings.keys(),
         key=lambda k: _ref_list_quality(all_ref_strings[k]),
     )
+    best_quality = _ref_list_quality(all_ref_strings[best_extractor])
+
+    # If pypdf isn't already configured, run it as a silent comparison extractor.
+    # This catches cases where pdfminer has column-interleaving artifacts or
+    # other quality issues. The quality score (which penalizes interleaved refs)
+    # determines whether to switch.
+    if not any(e.name == "pypdf" for e in extractors):
+        logger.debug("pypdf not configured — running as silent comparison extractor")
+        try:
+            from halref.extract.text_extractors.pypdf_extractor import PypdfExtractor
+            fallback = PypdfExtractor()
+            text = fallback.extract_text(pdf_path, page_range=page_range)
+            if text.strip():
+                pypdf_refs = split_references(text)
+                pypdf_quality = _ref_list_quality(pypdf_refs)
+                logger.debug(f"  pypdf (fallback): {len(pypdf_refs)} refs, quality_score={pypdf_quality:.1f}")
+                if pypdf_quality > best_quality:
+                    logger.info(
+                        f"pypdf fallback quality ({pypdf_quality:.1f}) > {best_extractor} "
+                        f"({best_quality:.1f}) — switching to pypdf"
+                    )
+                    all_ref_strings["pypdf"] = pypdf_refs
+                    best_extractor = "pypdf"
+        except Exception as e:
+            logger.warning(f"pypdf quality-fallback failed: {e}")
+
     ref_strings = all_ref_strings[best_extractor]
     logger.info(f"Using {best_extractor} extraction ({len(ref_strings)} references)")
 
@@ -216,7 +263,10 @@ def _ref_list_quality(refs: list[str]) -> float:
         return 0.0
     year_count = sum(1 for r in refs if re.search(r"\b(?:19|20)\d{2}\b", r))
     good_length = sum(1 for r in refs if 40 <= len(r) <= 800)
-    return year_count * 2 + good_length
+    # Penalize column-interleaving artifacts: refs where a word runs directly
+    # into "In Proceedings" with no space (e.g. "resoIn Proceedings of lution:")
+    interleaved = sum(1 for r in refs if re.search(r"[a-z]In\s+(?:Proceedings|Pro\b)", r))
+    return year_count * 2 + good_length - interleaved * 5
 
 
 def _parse_with_ensemble(raw_text: str, parsers: list[FieldParser]) -> Reference:
