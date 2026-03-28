@@ -117,7 +117,7 @@ Create a `config.toml` or set environment variables:
 ```bash
 # API keys (recommended for faster rate limits)
 export SEMANTIC_SCHOLAR_API_KEY="your-key"   # https://www.semanticscholar.org/product/api#api-key
-export OPENALEX_API_KEY="your-key"           # Required since Feb 2026 — https://openalex.org/users/me
+export OPENALEX_API_KEY="your-key"           # Required since Feb 2026 — https://openalex.org/settings/api-key
 export CROSSREF_MAILTO="you@example.com"     # No signup, just your email
 ```
 
@@ -141,7 +141,7 @@ enabled = true
 enabled = true
 
 [apis.openalex]
-api_key = ""  # Required since Feb 2026 — get a free key at https://openalex.org/users/me
+api_key = ""  # Required since Feb 2026 — get a free key at https://openalex.org/settings/api-key
 enabled = true
 
 [matching]
@@ -215,7 +215,7 @@ The tool flags these specific patterns:
 | Semantic Scholar | ~0.3 RPS (shared pool) | 1 RPS (dedicated) | [Free](https://www.semanticscholar.org/product/api#api-key) |
 | CrossRef | ~1 RPS | ~5 RPS (polite pool) | Just set your email |
 | DBLP | ~2 RPS | N/A | No key needed |
-| OpenAlex | ~1 RPS | ~5 RPS | [Free](https://openalex.org/users/me) |
+| OpenAlex | ~1 RPS | ~5 RPS | [Free](https://openalex.org/settings/api-key) |
 
 The tool respects rate limits automatically with per-API throttling and exponential backoff on 429 responses.
 
