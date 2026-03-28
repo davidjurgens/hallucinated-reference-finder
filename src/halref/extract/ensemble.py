@@ -111,6 +111,13 @@ def extract_references(pdf_path: Path, config: Config) -> list[Reference]:
         logger.error("No text extractors produced results")
         return []
 
+    # Log per-extractor stats before picking best
+    for extractor_name, refs in all_ref_strings.items():
+        quality = _ref_list_quality(refs)
+        logger.debug(
+            f"  {extractor_name}: {len(refs)} refs, quality_score={quality:.1f}"
+        )
+
     # Pick the best extractor result by quality:
     # Prefer the one with the most references that have years (indicates real refs)
     best_extractor = max(

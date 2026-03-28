@@ -65,12 +65,12 @@ async def llm_verify_match(
     )
 
     try:
-        client = openai.OpenAI(
+        client = openai.AsyncOpenAI(
             base_url=llm_config.base_url,
             api_key=llm_config.api_key or "not-needed",
         )
 
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=llm_config.model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
@@ -112,4 +112,5 @@ def _extract_json(text: str) -> dict:
                 return json.loads(text[start:end])
             except json.JSONDecodeError:
                 pass
+    logger.warning("LLM returned unparseable JSON, skipping verification: %s", text[:200])
     return {}
