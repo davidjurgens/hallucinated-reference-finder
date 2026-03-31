@@ -113,6 +113,216 @@ def test_field_accuracy(refs: list, known_refs: list, label: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Fixture-shape-specific extraction tests
+# ---------------------------------------------------------------------------
+
+# Known titles in the numbered-refs fixture (IEEE style)
+NUMBERED_REF_TITLES = [
+    "Attention is All You Need",
+    "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+    "RoBERTa: A Robustly Optimized BERT Pretraining Approach",
+    "Language Models are Few-Shot Learners",
+    "Distributed Representations of Words and Phrases and their Compositionality",
+    "GloVe: Global Vectors for Word Representation",
+    "Deep Contextualized Word Representations",
+    "BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension",
+    "Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer",
+    "Transformers: State-of-the-Art Natural Language Processing",
+]
+
+# Known author last names with non-ASCII characters
+UNICODE_AUTHOR_NAMES = [
+    "Schütze",   # Hinrich Schütze — umlaut ü
+    "Søgaard",   # Anders Søgaard — Danish ø
+    "Hajič",     # Jan Hajič — Czech háček
+    "Guzmán",    # Francisco Guzmán — Spanish tilde
+]
+
+# Known titles in the arXiv-style fixture
+ARXIV_REF_TITLES = [
+    "LLaMA 2: Open Foundation and Fine-Tuned Chat Models",
+    "Mistral 7B",
+    "Qwen Technical Report",
+    "Training language models to follow instructions with human feedback",
+    "Constitutional AI: Harmlessness from AI Feedback",
+    "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+    "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models",
+]
+
+
+def test_numbered_refs(pdf_name: str = "test_paper_numbered_refs.pdf") -> list:
+    """Test extraction of numbered (IEEE-style) references.
+
+    Numbered refs like '[1] A. Vaswani, ...' are a different code path from
+    ACL author-year style. The splitter must recognise the '[N]' prefix as a
+    boundary, not confuse it with an inline citation.
+    """
+    from halref.config import Config
+    from halref.extract.ensemble import extract_references
+    from rapidfuzz import fuzz
+
+    pdf_path = FIXTURES / pdf_name
+    if not pdf_path.exists():
+        print(f"  SKIP: {pdf_path} not found (compile with pdflatex first)")
+        return []
+
+    config = Config.default()
+    refs = extract_references(pdf_path, config)
+
+    check(
+        len(refs) >= 8,
+        f"numbered refs: extracted {len(refs)} (expected ≥8)",
+        f"got only {len(refs)}",
+    )
+
+    # Check that we're getting titles not just raw "[1] A. Vaswani..." blobs
+    refs_with_titles = [r for r in refs if r.title and len(r.title) > 10]
+    check(
+        len(refs_with_titles) >= len(refs) * 0.7,
+        f"numbered refs: {len(refs_with_titles)}/{len(refs)} have parsed titles",
+        f"too many without titles",
+    )
+
+    # Spot-check a few known titles
+    extracted_titles = [r.title or "" for r in refs]
+    matched = sum(
+        1 for t in NUMBERED_REF_TITLES
+        if any(fuzz.token_sort_ratio(t.lower(), e.lower()) > 70 for e in extracted_titles)
+    )
+    check(
+        matched >= len(NUMBERED_REF_TITLES) * 0.7,
+        f"numbered refs: {matched}/{len(NUMBERED_REF_TITLES)} known titles matched",
+    )
+
+    # Years should be parseable (not embedded in '[1]' prefix)
+    refs_with_years = [r for r in refs if r.year and 1990 <= r.year <= 2030]
+    check(
+        len(refs_with_years) >= len(refs) * 0.7,
+        f"numbered refs: {len(refs_with_years)}/{len(refs)} have valid years",
+    )
+
+    return refs
+
+
+def test_unicode_author_names(pdf_name: str = "test_paper_unicode_authors.pdf") -> list:
+    """Test that non-ASCII author names are preserved through extraction.
+
+    Diacritics (ü, ø, č, ã) are frequently stripped by PDF extractors or
+    transliterated by parsers. This causes false-negative author matching
+    when checking for hallucinated author order.
+    """
+    from halref.config import Config
+    from halref.extract.ensemble import extract_references
+
+    pdf_path = FIXTURES / pdf_name
+    if not pdf_path.exists():
+        print(f"  SKIP: {pdf_path} not found (compile with pdflatex first)")
+        return []
+
+    config = Config.default()
+    refs = extract_references(pdf_path, config)
+
+    check(
+        len(refs) >= 5,
+        f"unicode authors: extracted {len(refs)} refs (expected ≥5)",
+    )
+
+    # Collect all raw text and author strings
+    all_text = " ".join(
+        (r.raw_text or "") + " " + " ".join(a.full or a.last for a in r.authors)
+        for r in refs
+    )
+
+    preserved = []
+    transliterated = []
+    for name in UNICODE_AUTHOR_NAMES:
+        # Check canonical form preserved
+        if name in all_text:
+            preserved.append(name)
+        else:
+            # Check if it was silently ASCII-fied (e.g. "Schutze" not "Schütze")
+            import unicodedata
+            ascii_form = unicodedata.normalize("NFD", name).encode("ascii", "ignore").decode()
+            if ascii_form.lower() in all_text.lower():
+                transliterated.append(name)
+
+    if preserved:
+        print(f"    Unicode preserved: {preserved}")
+    if transliterated:
+        print(f"    Silently transliterated (diacritics stripped): {transliterated}")
+
+    # At minimum the raw text should contain unicode — if it's all ASCII something
+    # went wrong at the PDF extraction layer
+    has_unicode_in_raw = any(
+        ord(c) > 127 for r in refs for c in (r.raw_text or "")
+    )
+    check(
+        has_unicode_in_raw or len(refs) == 0,
+        "unicode authors: raw extracted text contains non-ASCII characters",
+        "all text is ASCII — diacritics may have been stripped by extractor",
+    )
+
+    return refs
+
+
+def test_arxiv_style_refs(pdf_name: str = "test_paper_arxiv_style.pdf") -> list:
+    """Test extraction of arXiv-style references.
+
+    arXiv refs lack formal venue names and page numbers, use 'et al.' author
+    truncation, and often include DOI/URL fields. These patterns are common
+    in fast-moving ML papers and stress-test the field parsers.
+    """
+    from halref.config import Config
+    from halref.extract.ensemble import extract_references
+    from rapidfuzz import fuzz
+
+    pdf_path = FIXTURES / pdf_name
+    if not pdf_path.exists():
+        print(f"  SKIP: {pdf_path} not found (compile with pdflatex first)")
+        return []
+
+    config = Config.default()
+    refs = extract_references(pdf_path, config)
+
+    check(
+        len(refs) >= 5,
+        f"arxiv style: extracted {len(refs)} refs (expected ≥5)",
+    )
+
+    # Title matching — arXiv refs have real titles even without venue/pages
+    extracted_titles = [r.title or "" for r in refs]
+    matched = sum(
+        1 for t in ARXIV_REF_TITLES
+        if any(fuzz.token_sort_ratio(t.lower(), e.lower()) > 70 for e in extracted_titles)
+    )
+    check(
+        matched >= len(ARXIV_REF_TITLES) * 0.6,
+        f"arxiv style: {matched}/{len(ARXIV_REF_TITLES)} known titles matched",
+    )
+
+    # Year extraction — arXiv refs always have a year even without pages
+    refs_with_years = [r for r in refs if r.year and 2020 <= r.year <= 2030]
+    check(
+        len(refs_with_years) >= len(refs) * 0.6,
+        f"arxiv style: {len(refs_with_years)}/{len(refs)} have valid recent years",
+    )
+
+    # Author extraction with et al. — parsers should capture the named authors
+    # and not include the literal string "et al" as an author name
+    et_al_as_author = [
+        r for r in refs
+        if any("et al" in (a.last or "").lower() for a in r.authors)
+    ]
+    check(
+        len(et_al_as_author) == 0,
+        f"arxiv style: 'et al.' not parsed as an author name",
+        f"found {len(et_al_as_author)} refs with 'et al' as author",
+    )
+
+    return refs
+
+
+# ---------------------------------------------------------------------------
 # Batch deduplication tests
 # ---------------------------------------------------------------------------
 
@@ -415,21 +625,34 @@ def main():
     if refs_lim:
         test_field_accuracy(refs_lim, REAL_REFS, "field accuracy")
 
+    # --- Citation style variants ---
+    print("\n--- Test 5: Numbered refs / IEEE style (test_paper_numbered_refs.pdf) ---")
+    print("    (Tests splitter with [N] prefix boundaries, year not embedded in prefix)")
+    test_numbered_refs()
+
+    print("\n--- Test 6: Unicode author names (test_paper_unicode_authors.pdf) ---")
+    print("    (Tests that diacritics like ü, ø, č are preserved through extraction)")
+    test_unicode_author_names()
+
+    print("\n--- Test 7: arXiv-style refs (test_paper_arxiv_style.pdf) ---")
+    print("    (Tests refs with no venue/pages, et al. truncation, DOI/URL fields)")
+    test_arxiv_style_refs()
+
     # --- Batch dedup ---
-    print("\n--- Test 5: Batch deduplication ---")
+    print("\n--- Test 8: Batch deduplication ---")
     test_batch_dedup()
 
-    print("\n--- Test 6: Batch priority ordering ---")
+    print("\n--- Test 9: Batch priority ordering ---")
     test_batch_priority()
 
-    print("\n--- Test 7: Batch result reassembly ---")
+    print("\n--- Test 10: Batch result reassembly ---")
     test_batch_reassembly()
 
     # --- API tests ---
-    print("\n--- Test 8: API - known paper lookup ---")
+    print("\n--- Test 11: API - known paper lookup ---")
     asyncio.run(test_api_match())
 
-    print("\n--- Test 9: API - fictitious paper lookup ---")
+    print("\n--- Test 12: API - fictitious paper lookup ---")
     asyncio.run(test_api_fictitious())
 
     # --- Summary ---

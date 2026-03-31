@@ -1,0 +1,59 @@
+\documentclass[11pt]{article}
+\usepackage[review]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{lipsum}
+
+\title{Cross-Lingual Parsing with Non-ASCII Author Names}
+
+\author{First Author \\
+  Test University \\
+  \texttt{first@test.edu} \\\And
+  Second Author \\
+  Test University \\
+  \texttt{second@test.edu} \\}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper tests reference extraction when author names contain diacritics,
+umlauts, and other non-ASCII Unicode characters that appear frequently in
+NLP author names. Incorrect transliteration of these characters causes
+false-negative author matching during hallucination detection.
+\end{abstract}
+
+\section{Introduction}
+\lipsum[1-2]
+Multilingual NLP has benefited greatly from cross-lingual models
+\cite{schuetze-1992-dimensions,sogaard-2011-semisupervised,nivre-etal-2016-universal}.
+Character-level representations \cite{bojanowski-etal-2017-enriching} handle
+morphologically rich languages effectively.
+
+\lipsum[3-4]
+
+\section{Background}
+\lipsum[5-7]
+Transfer learning across languages \cite{conneau-etal-2020-unsupervised,wu-dredze-2019-beto}
+has become the dominant paradigm.
+
+\lipsum[8-9]
+
+\section{Methods}
+\lipsum[10-12]
+We evaluate on Universal Dependencies \cite{nivre-etal-2016-universal}
+following the methodology of \cite{sogaard-2011-semisupervised}.
+
+\lipsum[13-14]
+
+\section{Conclusion}
+\lipsum[15]
+
+\bibliography{unicode_refs}
+\bibliographystyle{acl_natbib}
+
+\end{document}
