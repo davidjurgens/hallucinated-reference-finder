@@ -107,23 +107,26 @@ def extract_references(pdf_path: Path, config: Config) -> list[Reference]:
         except Exception as e:
             logger.warning(f"{extractor.name} failed: {e}")
 
-    if not all_ref_strings:
-        # Primary extractors all failed (e.g. pdfminer returned garbled text).
-        # Try pypdf as an automatic fallback before giving up — it handles PDFs
-        # that pdfminer can't parse (missing layout info, no whitespace output).
-        if not any(e.name == "pypdf" for e in extractors):
-            logger.info("Primary extractors produced no results — trying pypdf fallback")
-            try:
-                from halref.extract.text_extractors.pypdf_extractor import PypdfExtractor
-                fallback = PypdfExtractor()
-                text = fallback.extract_text(pdf_path, page_range=page_range)
-                if text.strip():
-                    refs = split_references(text)
-                    if refs:
-                        logger.info(f"pypdf fallback: found {len(refs)} references")
-                        all_ref_strings["pypdf"] = refs
-            except Exception as e:
-                logger.warning(f"pypdf fallback failed: {e}")
+    # If pypdf wasn't configured, run it as a comparison/fallback extractor.
+    # This handles two cases in a single pass:
+    #   1. All primary extractors failed (e.g. pdfminer returned garbled text) — pypdf
+    #      is the last resort.
+    #   2. Primary extractors succeeded but may have column-interleaving artifacts —
+    #      the quality score (which penalizes interleaved refs) determines whether to
+    #      switch to pypdf's cleaner output.
+    if "pypdf" not in all_ref_strings and not any(e.name == "pypdf" for e in extractors):
+        logger.debug("pypdf not configured — running as comparison/fallback extractor")
+        try:
+            from halref.extract.text_extractors.pypdf_extractor import PypdfExtractor
+            pypdf_extractor = PypdfExtractor()
+            pypdf_text = pypdf_extractor.extract_text(pdf_path, page_range=page_range)
+            if pypdf_text.strip():
+                pypdf_refs = split_references(pypdf_text)
+                if pypdf_refs:
+                    all_ref_strings["pypdf"] = pypdf_refs
+                    logger.info(f"pypdf: found {len(pypdf_refs)} references")
+        except Exception as e:
+            logger.warning(f"pypdf comparison/fallback failed: {e}")
 
     if not all_ref_strings:
         logger.error("No text extractors produced results")
@@ -138,31 +141,6 @@ def extract_references(pdf_path: Path, config: Config) -> list[Reference]:
         all_ref_strings.keys(),
         key=lambda k: _ref_list_quality(all_ref_strings[k]),
     )
-    best_quality = _ref_list_quality(all_ref_strings[best_extractor])
-
-    # If pypdf isn't already configured, run it as a silent comparison extractor.
-    # This catches cases where pdfminer has column-interleaving artifacts or
-    # other quality issues. The quality score (which penalizes interleaved refs)
-    # determines whether to switch.
-    if not any(e.name == "pypdf" for e in extractors):
-        logger.debug("pypdf not configured — running as silent comparison extractor")
-        try:
-            from halref.extract.text_extractors.pypdf_extractor import PypdfExtractor
-            fallback = PypdfExtractor()
-            text = fallback.extract_text(pdf_path, page_range=page_range)
-            if text.strip():
-                pypdf_refs = split_references(text)
-                pypdf_quality = _ref_list_quality(pypdf_refs)
-                logger.debug(f"  pypdf (fallback): {len(pypdf_refs)} refs, quality_score={pypdf_quality:.1f}")
-                if pypdf_quality > best_quality:
-                    logger.info(
-                        f"pypdf fallback quality ({pypdf_quality:.1f}) > {best_extractor} "
-                        f"({best_quality:.1f}) — switching to pypdf"
-                    )
-                    all_ref_strings["pypdf"] = pypdf_refs
-                    best_extractor = "pypdf"
-        except Exception as e:
-            logger.warning(f"pypdf quality-fallback failed: {e}")
 
     ref_strings = all_ref_strings[best_extractor]
     logger.info(f"Using {best_extractor} extraction ({len(ref_strings)} references)")
