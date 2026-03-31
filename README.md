@@ -26,6 +26,9 @@ halref check submissions/ -d results/
 
 # Check with all references shown (not just flagged ones)
 halref check paper.pdf -d results/ --show-ok
+
+# Check a pre-existing .bib file (skip PDF extraction)
+halref check-bib references.bib -d results/
 ```
 
 ## Installation
@@ -81,6 +84,21 @@ halref check paper.pdf --show-ok
 
 # With local LLM for ambiguous cases
 halref check paper.pdf --llm --llm-base-url http://localhost:11434/v1 --llm-model llama3
+```
+
+### Check a pre-existing .bib file
+
+If you already have a `.bib` file (e.g., from a LaTeX project or another extraction tool), you can verify it directly without needing the PDF:
+
+```bash
+# Single .bib file
+halref check-bib references.bib
+
+# Directory of .bib files
+halref check-bib bibs/ -d results/
+
+# Show all references, not just flagged
+halref check-bib references.bib --show-ok
 ```
 
 ### Extract references only (no verification)

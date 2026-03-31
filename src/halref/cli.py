@@ -147,6 +147,109 @@ def check(
     )
 
 
+@app.command("check-bib")
+def check_bib(
+    paths: Annotated[list[Path], typer.Argument(help=".bib file(s) or directory containing .bib files")],
+    outdir: Annotated[Path, typer.Option("--outdir", "-d", help="Output directory for all results")] = Path("halref_output"),
+    config: Annotated[Optional[Path], typer.Option("--config", "-c", help="Config TOML file")] = None,
+    format: Annotated[str, typer.Option("--format", "-f", help="Output format: terminal, json, bib, all")] = "all",
+    llm: Annotated[bool, typer.Option("--llm", help="Enable LLM verification pass")] = False,
+    llm_base_url: Annotated[Optional[str], typer.Option("--llm-base-url", help="LLM endpoint URL")] = None,
+    llm_model: Annotated[Optional[str], typer.Option("--llm-model", help="LLM model name")] = None,
+    threshold: Annotated[float, typer.Option("--threshold", "-t", help="Hallucination score threshold for flagging")] = 0.5,
+    show_ok: Annotated[bool, typer.Option("--show-ok", help="Show all references including verified OK ones")] = False,
+) -> None:
+    """Check pre-existing .bib file(s) for hallucinated references.
+
+    Skips PDF extraction — reads references directly from BibTeX files
+    and verifies them against academic databases.
+
+    All output goes into --outdir (default: halref_output/).
+    """
+    from halref.config import load_config
+    from halref.extract.bib_reader import read_bib
+    from halref.pipeline import run_check
+
+    t_start = time.time()
+
+    cfg = load_config(str(config) if config else None)
+    if llm:
+        cfg.llm.enabled = True
+    if llm_base_url:
+        cfg.llm.base_url = llm_base_url
+    if llm_model:
+        cfg.llm.model = llm_model
+
+    # Resolve .bib paths
+    bib_files = _resolve_bib_paths(paths)
+    if not bib_files:
+        console.print("[red]No .bib files found.[/red]")
+        raise typer.Exit(1)
+
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    console.print(f"[bold]halref check-bib[/bold] — {len(bib_files)} .bib file(s)")
+    console.print(f"Output: {outdir.resolve()}", style="dim")
+    console.print()
+
+    # Read references from .bib files
+    per_file_refs: dict[Path, list] = {}
+    total_refs = 0
+    for bib_path in bib_files:
+        refs = read_bib(bib_path)
+        per_file_refs[bib_path] = refs
+        total_refs += len(refs)
+        console.print(f"  {bib_path.name}: {len(refs)} references", style="dim")
+
+    console.print(
+        f"\n[green]Loaded {total_refs} references[/green] from {len(bib_files)} file(s)"
+    )
+
+    # Verify against APIs
+    console.print()
+    t_verify = time.time()
+    report = asyncio.run(
+        run_check(
+            list(per_file_refs.keys()),
+            cfg,
+            threshold=threshold,
+            per_file_refs=per_file_refs,
+        )
+    )
+    console.print(
+        f"[green]Verification complete[/green] — "
+        f"{report.total_flagged} flagged of {report.total_references} "
+        f"({_fmt_elapsed(time.time() - t_verify)})"
+    )
+
+    # Output report(s)
+    from halref.output.bib_output import write_bib_report
+    from halref.output.json_output import write_json_report
+    from halref.output.report import print_terminal_report
+
+    write_json = format in ("json", "all")
+    write_bib_annotated = format in ("bib", "all")
+    write_terminal = format in ("terminal", "all")
+
+    if write_json:
+        json_path = outdir / "report.json"
+        write_json_report(report, json_path)
+        console.print(f"Wrote {json_path.resolve()}", style="dim")
+
+    if write_bib_annotated:
+        bib_report_path = outdir / "report_annotated.bib"
+        write_bib_report(report, bib_report_path)
+        console.print(f"Wrote {bib_report_path.resolve()}", style="dim")
+
+    console.print()
+    if write_terminal:
+        print_terminal_report(report, threshold=threshold, show_ok=show_ok)
+
+    console.print(
+        f"\n[bold]Done[/bold] in {_fmt_elapsed(time.time() - t_start)}"
+    )
+
+
 @app.command()
 def extract(
     paths: Annotated[list[Path], typer.Argument(help="PDF file(s) to extract references from")],
@@ -209,6 +312,19 @@ def _resolve_paths(paths: list[Path]) -> list[Path]:
         else:
             console.print(f"[yellow]Skipping {p} (not a PDF or doesn't exist)[/yellow]")
     return pdf_files
+
+
+def _resolve_bib_paths(paths: list[Path]) -> list[Path]:
+    """Expand directories into .bib files."""
+    bib_files = []
+    for p in paths:
+        if p.is_dir():
+            bib_files.extend(sorted(p.glob("*.bib")))
+        elif p.suffix.lower() == ".bib" and p.exists():
+            bib_files.append(p)
+        else:
+            console.print(f"[yellow]Skipping {p} (not a .bib file or doesn't exist)[/yellow]")
+    return bib_files
 
 
 if __name__ == "__main__":
