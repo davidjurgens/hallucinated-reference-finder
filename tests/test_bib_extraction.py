@@ -66,18 +66,15 @@ def check(condition: bool, label: str, detail: str = "") -> bool:
 
 def find_pdf(arxiv_id: str) -> Path | None:
     """Find compiled or downloaded PDF for a paper."""
-    # Check compiled PDFs in source dir
+    # Check compiled PDFs in source dir — only well-known paper filenames
     src = SOURCE_DIR / arxiv_id
     if src.exists():
         for pattern in ["acl_latex.pdf", "main.pdf", "paper.pdf", "ACL.pdf"]:
             pdf = src / pattern
             if pdf.exists():
                 return pdf
-        pdfs = list(src.glob("*.pdf"))
-        # Skip figure PDFs
-        pdfs = [p for p in pdfs if not any(x in p.name.lower() for x in ["fig", "plot", "image", "diagram"])]
-        if pdfs:
-            return pdfs[0]
+        # Don't fall back to arbitrary PDFs in the source dir — they're likely
+        # figures/diagrams from the LaTeX source. Fall through to arxiv PDF below.
 
     # Fallback to arxiv-downloaded PDF
     for pattern in [f"{arxiv_id}.pdf", f"{arxiv_id}v1.pdf"]:
