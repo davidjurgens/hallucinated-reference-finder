@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from halref.extract.base import FieldParser
 from halref.models import Author, Reference
+
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = """You are a citation parser. Given a raw reference string from an academic paper, extract the structured fields. Return ONLY valid JSON with these fields:
@@ -69,8 +72,7 @@ class LLMFieldParser(FieldParser):
             # Try to extract JSON from the response
             data = self._extract_json(content)
             if not data:
-                import logging as _logging
-                _logging.getLogger(__name__).warning(
+                logger.warning(
                     "LLMFieldParser: unparseable JSON response (model=%s): %s",
                     self.model, content[:200]
                 )
@@ -78,35 +80,6 @@ class LLMFieldParser(FieldParser):
 
         except Exception:
             # If LLM fails, return a minimally populated reference
-            return Reference(raw_text=raw_text, extraction_confidence=0.0)
-
-    async def parse_async(self, raw_text: str) -> Reference:
-        """Async version of parse() using AsyncOpenAI."""
-        import openai
-        client = openai.AsyncOpenAI(
-            base_url=self.base_url,
-            api_key=self.api_key or "not-needed",
-        )
-        try:
-            response = await client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": raw_text},
-                ],
-                temperature=0.0,
-                max_tokens=1024,
-            )
-            content = response.choices[0].message.content or ""
-            data = self._extract_json(content)
-            if not data:
-                import logging as _logging
-                _logging.getLogger(__name__).warning(
-                    "LLMFieldParser: unparseable JSON response (model=%s): %s",
-                    self.model, content[:200]
-                )
-            return self._build_reference(raw_text, data)
-        except Exception:
             return Reference(raw_text=raw_text, extraction_confidence=0.0)
 
     def _extract_json(self, text: str) -> dict:
