@@ -107,6 +107,27 @@ def extract_references(pdf_path: Path, config: Config) -> list[Reference]:
         except Exception as e:
             logger.warning(f"{extractor.name} failed: {e}")
 
+    # If pypdf wasn't configured, run it as a comparison/fallback extractor.
+    # This handles two cases in a single pass:
+    #   1. All primary extractors failed (e.g. pdfminer returned garbled text) — pypdf
+    #      is the last resort.
+    #   2. Primary extractors succeeded but may have column-interleaving artifacts —
+    #      the quality score (which penalizes interleaved refs) determines whether to
+    #      switch to pypdf's cleaner output.
+    if "pypdf" not in all_ref_strings and not any(e.name == "pypdf" for e in extractors):
+        logger.debug("pypdf not configured — running as comparison/fallback extractor")
+        try:
+            from halref.extract.text_extractors.pypdf_extractor import PypdfExtractor
+            pypdf_extractor = PypdfExtractor()
+            pypdf_text = pypdf_extractor.extract_text(pdf_path, page_range=page_range)
+            if pypdf_text.strip():
+                pypdf_refs = split_references(pypdf_text)
+                if pypdf_refs:
+                    all_ref_strings["pypdf"] = pypdf_refs
+                    logger.info(f"pypdf: found {len(pypdf_refs)} references")
+        except Exception as e:
+            logger.warning(f"pypdf comparison/fallback failed: {e}")
+
     if not all_ref_strings:
         logger.error("No text extractors produced results")
         return []
@@ -120,10 +141,14 @@ def extract_references(pdf_path: Path, config: Config) -> list[Reference]:
 
     # Pick the best extractor result by quality:
     # Prefer the one with the most references that have years (indicates real refs)
+    for extractor_name, refs in all_ref_strings.items():
+        quality = _ref_list_quality(refs)
+        logger.debug(f"  {extractor_name}: {len(refs)} refs, quality_score={quality:.1f}")
     best_extractor = max(
         all_ref_strings.keys(),
         key=lambda k: _ref_list_quality(all_ref_strings[k]),
     )
+
     ref_strings = all_ref_strings[best_extractor]
     logger.info(f"Using {best_extractor} extraction ({len(ref_strings)} references)")
 
@@ -223,7 +248,10 @@ def _ref_list_quality(refs: list[str]) -> float:
         return 0.0
     year_count = sum(1 for r in refs if re.search(r"\b(?:19|20)\d{2}\b", r))
     good_length = sum(1 for r in refs if 40 <= len(r) <= 800)
-    return year_count * 2 + good_length
+    # Penalize column-interleaving artifacts: refs where a word runs directly
+    # into "In Proceedings" with no space (e.g. "resoIn Proceedings of lution:")
+    interleaved = sum(1 for r in refs if re.search(r"[a-z]In\s+(?:Proceedings|Pro\b)", r))
+    return year_count * 2 + good_length - interleaved * 5
 
 
 def _parse_with_ensemble(raw_text: str, parsers: list[FieldParser]) -> Reference:
