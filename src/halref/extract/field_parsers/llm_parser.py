@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from halref.extract.base import FieldParser
 from halref.models import Author, Reference
+
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = """You are a citation parser. Given a raw reference string from an academic paper, extract the structured fields. Return ONLY valid JSON with these fields:
@@ -25,6 +28,7 @@ Rules:
 - Year should be a 4-digit integer or null
 - Venue is the journal/conference name without "In" or "Proceedings of" prefix
 - If a field is not present, use empty string or null for year
+- Preserve Unicode characters exactly as written — do not transliterate diacritics (e.g., keep "Schütze" not "Schutze", "Søgaard" not "Sogaard")
 - Return ONLY the JSON object, no additional text"""
 
 
@@ -67,6 +71,11 @@ class LLMFieldParser(FieldParser):
             content = response.choices[0].message.content or ""
             # Try to extract JSON from the response
             data = self._extract_json(content)
+            if not data:
+                logger.warning(
+                    "LLMFieldParser: unparseable JSON response (model=%s): %s",
+                    self.model, content[:200]
+                )
             return self._build_reference(raw_text, data)
 
         except Exception:
